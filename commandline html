@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Simulation</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: monospace;
+            font-size: 16px;
+            padding: 20px;
+            overflow-wrap: break-word;
+        }
+
+        #terminal {
+            width: 100%;
+        }
+
+        .prompt {
+            display: inline;
+        }
+
+        .input {
+            background-color: transparent;
+            border: none;
+            color: white;
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+            width: 80%;
+            display: inline-block;
+            vertical-align: top;
+        }
+
+        .cursor {
+            background-color: white;
+            display: inline-block;
+            width: 8px;
+            height: 1em;
+            animation: blink 1s steps(2, start) infinite;
+            vertical-align: top;
+        }
+
+        @keyframes blink {
+            to {
+                visibility: hidden;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="terminal"></div>
+
+    <script>
+        const terminal = document.getElementById("terminal");
+        let passwordRequested = false;
+        let pendingCommand = "";
+        const correctPassword = "password";
+
+        function createPrompt() {
+            const line = document.createElement("div");
+            line.innerHTML = `<span class="prompt">user@server-unit:~$: </span><input type="text" class="input" autofocus>`;
+            terminal.appendChild(line);
+            const input = line.querySelector(".input");
+            input.focus();
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    processCommand(input.value.trim(), input);
+                }
+            });
+        }
+
+        function printMessage(message, callback) {
+            const msgLine = document.createElement("div");
+            msgLine.textContent = message;
+            terminal.appendChild(msgLine);
+            setTimeout(callback, 500);
+        }
+
+        function processCommand(command, inputElement) {
+            inputElement.disabled = true;
+
+            if (passwordRequested) {
+                if (command === correctPassword) {
+                    passwordRequested = false;
+                    executeCommand(pendingCommand);
+                } else {
+                    printMessage("[sudo] password for user:", createPrompt);
+                }
+            } else if (command.startsWith("sudo")) {
+                passwordRequested = true;
+                pendingCommand = command;
+                printMessage("[sudo] password for user:", () => {
+                    createPasswordPrompt();
+                });
+            } else {
+                executeCommand(command);
+            }
+        }
+
+        function createPasswordPrompt() {
+            const line = document.createElement("div");
+            line.innerHTML = `<span class="prompt">[sudo] password for user: </span><input type="password" class="input" autofocus>`;
+            terminal.appendChild(line);
+            const input = line.querySelector(".input");
+            input.focus();
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    processCommand(input.value.trim(), input);
+                }
+            });
+        }
+
+        function executeCommand(command) {
+            const responses = {
+                "sudo ufw disable": "Firewall stopped and disabled on system startup.",
+                "sudo ufw enable": "Firewall is active and enabled on system startup.",
+                "sudo apt install apache2": "Reading package lists... done\nBuilding dependency tree... done\nReading state information... done\nThe following NEW packages will be installed:\napache2\nInstalling apache2...\nProcessing triggers for ufw\nProcessing triggers for libc-bin",
+                "sudo apt install mysql-server": "Reading package lists... done\nBuilding dependency tree... done\nReading state information... done\nThe following NEW packages will be installed:\nmysql-server\nInstalling mysql-server...\nProcessing triggers for ufw\nProcessing triggers for libc-bin",
+                "sudo apt install php": "Reading package lists... done\nBuilding dependency tree... done\nReading state information... done\nThe following NEW packages will be installed:\nphp\nInstalling php...\nProcessing triggers for ufw\nProcessing triggers for libc-bin",
+                "sudo service apache2 restart": "Restarting Apache2 service... Done.",
+                "sudo mysql_secure_installation": "New password for the MySQL root user: Securing MySQL... done"
+            };
+
+            if (responses[command]) {
+                printMessage(responses[command], createPrompt);
+            } else {
+                printMessage("Command not found.", createPrompt);
+            }
+        }
+
+        createPrompt();
+    </script>
+</body>
+</html>
